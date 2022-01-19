@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>360&deg; IADT Virtual Gallery</title>
+
+    <!-- REFERENCE GUIDE:
+    Building a 360° Image Gallery 
+    https://aframe.io/docs/1.2.0/guides/building-a-360-image-gallery.html 
+    
+    aframe-event-set-component
+    https://www.npmjs.com/package/aframe-event-set-component
+    -->
+
+    <link
+      rel="icon"
+      href="https://cdn.glitch.com/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2Fiadt.png?v=1632856106607"
+      type="image/png"
+    />
+
+    <!--
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    -->
+
+    <!-- Fallback for IADT firewall  -->
+    <script
+      src="https://www.unpkg.com/aframe@1.2.0/dist/aframe-v1.2.0.min.js"
+      crossorigin="anonymous"
+      type="text/javascript"
+    ></script>
+
+    <script src="https://unpkg.com/aframe-event-set-component@5/dist/aframe-event-set-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-layout-component@5.3.0/dist/aframe-layout-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-template-component@3.2.1/dist/aframe-template-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-proxy-event-component@2.1.0/dist/aframe-proxy-event-component.min.js"></script>
+
+    <!-- Template for the "links" to switch images. -->
+    <!-- Creates a plane with a shader for the thumbnail. If the thumbnail is pressed a sound plays and there 
+    is a 200ms delay that loads a black screen before the sky 360 changes to the corresponding image -->
+    <script id="link" type="text/html">
+      <a-entity class="link"
+        geometry="primitive: plane; height: 1; width: 2"
+        material="shader: flat; src: ${thumb}"
+        event-set__mouseenter="scale: 1.2 1.2 1"
+        event-set__mouseleave="scale: 1 1 1"
+        event-set__click="_target: #image-360; _delay: 200; material.src: ${src}"
+        proxy-event="event: click; to: #image-360; as: fade"
+        sound="on: click; src: #click-sound">
+      </a-entity>
+    </script>
+
+    <!-- Camera zoom functionality -->
+    <script id="cameraZoom" type="text/javascript">
+      // Wait for page to load
+      window.addEventListener("load", function() {
+        let cam = document.getElementById("camera");
+        let camAttributes = cam.getAttribute("camera");
+
+        let cursor = document.getElementById("cursor");
+        let geometryAttributes = cursor.getAttribute("geometry");
+        //let materialAttributes = cursor.getAttribute("material");
+
+        function ZoomIn(e) {
+          // Reduce delta to numbers usable with AFrame's camera zoom
+          let delta = Math.max(-1, Math.min(1, e.wheelDelta || -e.detail)) / 5;
+
+          // Clamp zooming too far or too low
+          if (
+            (delta > 0 && camAttributes.zoom > 4.5) ||
+            (delta < 0 && camAttributes.zoom < 0.9)
+          )
+            return false;
+
+          if (delta > 0) {
+            let newRadius = camAttributes.zoom / 1000;
+
+            if (!(geometryAttributes.radius < 0.008)) {
+              geometryAttributes.radius = geometryAttributes.radius - newRadius;
+              cursor.setAttribute("geometry", geometryAttributes);
+            }
+          } else {
+            let newRadius = camAttributes.zoom / 4000;
+
+            if (!(geometryAttributes.radius > 0.02)) {
+              geometryAttributes.radius = geometryAttributes.radius + newRadius;
+              cursor.setAttribute("geometry", geometryAttributes);
+            }
+          }
+
+          camAttributes.zoom += delta;
+          cam.setAttribute("camera", camAttributes);
+        }
+
+        window.addEventListener("mousewheel", ZoomIn, false); // IE9, Chrome, Safari, Opera
+        window.addEventListener("DOMMouseScroll", ZoomIn, false); // Firefox
+      });
+    </script>
+
+    <!-- Test webpage loading speed -->
+    <script id="speedTest" type="text/javascript">
+      var initialTime = new Date().getTime();
+      AFRAME.registerComponent("timestamp", {
+        init: function() {
+          let finalTime = new Date().getTime();
+          console.log(
+            "Took",
+            (finalTime - initialTime) / 1000,
+            "seconds to load"
+          );
+        }
+      });
+    </script>
+
+    <!-- Play video on click -->
+    <script id="playControls" type="text/javascript">
+      //Recursive function to loop video
+      function resetVideo(video) {
+        setTimeout(() => {
+          video.currentTime = 0;
+          resetVideo(video);
+        }, video.duration * 1000);
+      }
+
+      AFRAME.registerComponent("video-controls", {
+        init: function() {
+          let video = document.getElementById("orchard-video");
+          let videosphere = document.getElementById("videosphere");
+          let links = [
+            document.getElementById("links1"),
+            document.getElementById("links2")
+          ];
+          if (!video || !videosphere || !links.length) return;
+
+          // Add click listener to videosphere panel
+          videosphere.addEventListener("click", () => {
+            video.play();
+            video.currentTime = 0;
+            resetVideo(video);
+          });
+
+          // Add click listener to all other panels
+          links.forEach(item => {
+            item.addEventListener("click", () => {
+              video.pause();
+            });
+          });
+        }
+      });
+    </script>
+  </head>
+
+  <body>
+    <a-scene timestamp>
+      <a-text
+        font="kelsonsans"
+        value="Select Location"
+        width="15"
+        position="-1.95 -4.5 -8.2"
+        rotation="-50 0 0"
+        color="white"
+        opacity="1"
+        transparent="false"
+      ></a-text>
+
+      <!-- Assets such as text, sound and images from the photosphere -->
+      <a-assets>
+        <!-- Taken by Mikaela Marie Punzalan -->
+        <img
+          id="quadrangle"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2Fquadrangle.min.jpg?v=1633380750106"
+          crossorigin="anonymous"
+        />
+
+        <!-- Taken by Izabela Konkiel -->
+        <img
+          id="chapel-entrance"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2Fchapel.min.jpg?v=1633380739452"
+          crossorigin="anonymous"
+        />
+
+        <!-- Taken by Aaron Lynch -->
+        <img
+          id="entrance-to-main-hall"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2Fmain.min.jpg?v=1633380738186"
+          crossorigin="anonymous"
+        />
+
+        <!-- Taken by Tara Kelly-Brophy -->
+        <img
+          id="main-hall"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2Fatrium.min.jpg?v=1633380743652"
+          crossorigin="anonymous"
+        />
+
+        <!-- Taken by Aisling Kelly-Brophy -->
+        <img
+          id="cafeteria"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2Fcanteen.min.jpg?v=1633380743747"
+          crossorigin="anonymous"
+        />
+
+        <!-- Taken by Jonathan Berkeley -->
+        <img
+          id="cube-building"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2Fcube.min.jpg?v=1633380749385"
+          crossorigin="anonymous"
+        />
+
+        <!-- Taken by Aisling Kelly-Brophy -->
+        <video
+          id="orchard-video"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2F07a21a5f-fafc-497a-ab05-d4eb4cfd4a77-pano.mp4?v=1633388490985"
+          crossorigin="anonymous"
+          preload="auto"
+        ></video>
+
+        <!-- Thumbnail Pics -->
+        <img
+          id="quadrangle-thumb"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2Fquadrangle.thumb.min.jpg?v=1633385791193"
+          crossorigin="anonymous"
+        />
+        <img
+          id="chapel-thumb"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2Fchapel.thumb.min.jpg?v=1633385790555"
+          crossorigin="anonymous"
+        />
+        <img
+          id="courtyard2-thumb"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2Fmain.thumb.min.jpg?v=1633385790917"
+          crossorigin="anonymous"
+        />
+        <img
+          id="atrium-thumb"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2Fatrium.thumb.min.jpg?v=1633385468681"
+          crossorigin="anonymous"
+        />
+        <img
+          id="canteen-thumb"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2Fcanteen.thumb.min.jpg?v=1633385790496"
+          crossorigin="anonymous"
+        />
+        <img
+          id="entrance-thumb"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2Fcube.thumb.min.jpg?v=1633385790759"
+          crossorigin="anonymous"
+        />
+        <img
+          id="video-thumb"
+          src="https://cdn.glitch.me/07a21a5f-fafc-497a-ab05-d4eb4cfd4a77%2ForchVidFlipped.png?v=1633435272502"
+          crossorigin="anonymous"
+        />
+
+        <!-- Runs this sound on-click -->
+        <audio
+          id="click-sound"
+          crossorigin="anonymous"
+          src="https://cdn.aframe.io/360-image-gallery-boilerplate/audio/click.ogg"
+        ></audio>
+      </a-assets>
+
+      <!-- Sky 360 -->
+      <!-- Contains the starting image that gets loaded in first.
+      Delays -->
+      <a-sky
+        id="image-360"
+        radius="450"
+        rotation="0 -67 0"
+        src="#quadrangle"
+        animation__fade="property: components.material.material.color; type: color; from: #FFF; to: #000; dur: 200; startEvents: fade"
+        animation__fadeback="property: components.material.material.color; type: color; from: #000; to: #FFF; dur: 200; startEvents: animationcomplete__fade"
+      ></a-sky>
+
+      <!-- Section 1 (TOP) thumbail and 360 images for the "Links" -->
+      <!-- Positioning of template -->
+      <a-entity
+        id="links1"
+        layout="type: line; margin: 2.5"
+        position="-2 -6.5 -5.5"
+        rotation="-50 0 0"
+      >
+        <!-- Images for the template -->
+        <a-entity
+          template="src: #link"
+          data-src="#main-hall"
+          data-thumb="#atrium-thumb"
+        ></a-entity>
+
+        <a-entity
+          template="src: #link"
+          data-src="#cafeteria"
+          data-thumb="#canteen-thumb"
+        ></a-entity>
+        <a-entity
+          template="src: #link"
+          data-src="#cube-building"
+          data-thumb="#entrance-thumb"
+        ></a-entity>
+      </a-entity>
+
+      <!-- Section 2 (BOTTOM) thumnail and 360 images for the "links" -->
+      <!-- Positioning of template -->
+      <a-entity
+        id="links2"
+        layout="type: line; margin: 2.5"
+        position="-2 -5.5 -6.8"
+        rotation="-50 0 0"
+      >
+        <!-- Images for the template -->
+        <a-entity
+          template="src: #link"
+          data-src="#quadrangle"
+          data-thumb="#quadrangle-thumb"
+        ></a-entity>
+        <a-entity
+          template="src: #link"
+          data-src="#chapel-entrance"
+          data-thumb="#chapel-thumb"
+        ></a-entity>
+        <a-entity
+          template="src: #link"
+          data-src="#entrance-to-main-hall"
+          data-thumb="#courtyard2-thumb"
+        ></a-entity>
+      </a-entity>
+
+      <!-- Video -->
+      <a-entity
+        id="links3"
+        layout="type: line; margin: 2.5"
+        position="0.35 -5.5 -3"
+        rotation="-50 0 0"
+        video-controls
+      >
+        <a-videosphere
+          id="videosphere"
+          autoplay="true"
+          template="src: #link"
+          data-src="#orchard-video"
+          data-thumb="#video-thumb"
+        ></a-videosphere>
+      </a-entity>
+
+      <!-- Camera + Cursor Functionality -->
+      <a-entity id="camera" camera="active: true; fov: 80" look-controls>
+        <a-cursor
+          id="cursor"
+          material="color: orange; shader: flat"
+          animation__click="property: scale; startEvents: click; from: 0.1 0.1 0.1; to: 1 1 1; dur: 150"
+          animation__fusing="property: fusing; startEvents: fusing; from: 1 1 1; to: 0.1 0.1 0.1; dur: 1500"
+          event-set__mouseenter="_event: mouseenter; color: springgreen"
+          event-set__mouseleave="_event: mouseleave; color: orange"
+          geometry="primitive: circle; radius: 0.02"
+          raycaster="objects: .link"
+        ></a-cursor>
+      </a-entity>
+    </a-scene>
+  </body>
+</html>
